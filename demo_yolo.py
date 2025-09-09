@@ -68,13 +68,13 @@ else:
 
 print("Load Model MPRNet")
 # Load corresponding model architecture and weights
-load_file = run_path(os.path.join(task, "MPRNet.py"))
+load_file = run_path(os.path.join("MPRNet.py"))
 model = load_file['MPRNet']()
 model.cuda()
 
 print("Load weight")
 # weights = os.path.join(task, "pretrained_models", "model_"+task.lower()+".pth")
-weights = './Deraining/pretrained_models/model_deraining.pth'
+weights = './model_deraining.pth'
 
 weights_size = os.path.getsize(weights)
 print(f"weight size :: {weights_size / 1000} KiloBytes")
