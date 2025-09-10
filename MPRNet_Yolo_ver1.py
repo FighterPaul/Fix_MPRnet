@@ -1,3 +1,4 @@
+import PIL.Image
 import torch.nn.utils.prune as prune
 from ultralytics import YOLO
 import torch
@@ -29,8 +30,8 @@ parser.add_argument('--task', required=False, default='Deraining', type=str, hel
 args = parser.parse_args()
 
 task    = args.task
-inp_dir = args.input_dir
-out_dir = args.result_dir
+input_dir = args.input_dir
+result_dir = args.result_dir
 
 #-------------------------------------------------------------------------------------
 
@@ -48,7 +49,9 @@ def load_checkpoint(model, weights):
 
 
 
-
+#---------------------- Check system -----------------------------------------
+print(f"cuda available :: {torch.cuda.is_available()}")
+os.makedirs(result_dir, exist_ok=True)
 
 
 
@@ -57,16 +60,19 @@ def load_checkpoint(model, weights):
 
 
 #----------------------  Initial Model YOLO -------------------------------------
-# YOLO_MODEL = YOLO(model='./yolo11s.pt', task='detect')
-# labels = YOLO_MODEL.names
+print("Initilize YOLO ....")
+YOLO_MODEL = YOLO(model='./yolo11s.pt', task='detect')
+YOLO_MODEL.cuda()
+labels = YOLO_MODEL.names
 
 
 #--------------------   Initial Model MPRNet --------------------------------------
-# load_file = run_path(os.path.join("MPRNet.py"))
-# MPRNet_MODEL = load_file['MPRNet']()
-# MPRNet_MODEL.cuda()
-# MPRNet_MODEL_WEIGHT = './model_deraining.pth'
-# load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
+print("Initilize MPRNet ....")
+load_file = run_path(os.path.join("MPRNet.py"))
+MPRNet_MODEL = load_file['MPRNet']()
+MPRNet_MODEL.cuda()
+MPRNet_MODEL_WEIGHT = './model_deraining.pth'
+load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
 
 
 
@@ -86,13 +92,14 @@ def load_checkpoint(model, weights):
 # cap.set(4, RES_H)
 
 
-images = natsorted(glob(os.path.join(inp_dir, '*.jpg'))
-                + glob(os.path.join(inp_dir, '*.JPG'))
-                + glob(os.path.join(inp_dir, '*.png'))
-                + glob(os.path.join(inp_dir, '*.PNG')))
+#----------------------  edit dimension of image -----------------------
+print("*** PHASE edit images dimension ***")
+images = natsorted(glob(os.path.join(input_dir, '*.jpg'))
+                + glob(os.path.join(input_dir, '*.JPG'))
+                + glob(os.path.join(input_dir, '*.png'))
+                + glob(os.path.join(input_dir, '*.PNG')))
 
 INTERMEDITE_FOLDER = './Images/EditDimension_images'
-#----------------------  edit dimension of image -----------------------
 for loop_idx, each_image in enumerate(images):
     print(f"loop IDX :: {loop_idx}")
     im = cv2.imread(each_image, cv2.IMREAD_COLOR)
@@ -110,9 +117,16 @@ for loop_idx, each_image in enumerate(images):
 
 
 
-#---------------------- image ---------------------------------
-for loop_idx, each_image in enumerate(images):
-    pass
+images = natsorted(glob(os.path.join(INTERMEDITE_FOLDER, '*.jpg'))
+                + glob(os.path.join(INTERMEDITE_FOLDER, '*.JPG'))
+                + glob(os.path.join(INTERMEDITE_FOLDER, '*.png'))
+                + glob(os.path.join(INTERMEDITE_FOLDER, '*.PNG')))
+
+#---------------------- image inference ---------------------------------
+with torch.no_grad():
+    for loop_idx, each_image in enumerate(images):
+
+        print(f"Loop {loop_idx}")
     
     # ret, frame = cap.read()
     # if (frame is None) or (not ret):
@@ -128,21 +142,26 @@ for loop_idx, each_image in enumerate(images):
     #     break
 
 
-
-
-
-
-
-
-
-
-
-
 #---------------------  Restoration -----------------------------
+        img = PIL.Image.open(each_image).convert('RGB')
+        input_ = TF.to_tensor(img).unsqueeze(0).cuda()
 
+        restored_image = MPRNet_MODEL(input_)
+        restored_image = restored_image[0]
+        restored_image = torch.clamp(restored_image, 0, 1)
 
+        restored_image = restored_image.permute(0, 2, 3, 1).cpu().detach().numpy()
+        restored_image = img_as_ubyte(restored_image[0])
+
+        restored_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR)
 
 
 
 
 #--------------------- YOLO Predict -----------------------------
+
+
+
+#-------------------- save image ----------------------
+        path_to_save = os.path.join(result_dir, os.path.basename(each_image))
+        cv2.imwrite(filename=path_to_save, img=restored_image)
