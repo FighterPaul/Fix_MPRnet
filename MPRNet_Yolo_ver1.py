@@ -47,6 +47,24 @@ def load_checkpoint(model, weights):
             new_state_dict[name] = v
         model.load_state_dict(new_state_dict)
 
+def prune_model_YOLO(model, amount=0.2):
+    for module in model.modules():
+        if isinstance(module, torch.nn.Conv2d):
+            prune.l1_unstructured(module, name='weight', amount=amount)
+            prune.remove(module=module, name='weight')
+
+    return model
+
+
+def prune_model_MPRNet(model, amount=0.2):
+    for module in model.modules():
+        if isinstance(module, torch.nn.Conv2d):
+            prune.l1_unstructured(module, name='weight', amount=amount)
+            prune.remove(module=module, name='weight')
+
+    return model
+
+
 
 
 #---------------------- Check system -----------------------------------------
@@ -54,6 +72,8 @@ print(f"cuda available :: {torch.cuda.is_available()}")
 os.makedirs(result_dir, exist_ok=True)
 
 
+BBOX_COLOR = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), 
+              (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
 
 
 
@@ -66,8 +86,22 @@ YOLO_MODEL.cuda()
 LABELS = YOLO_MODEL.names
 
 
-BBOX_COLOR = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), 
-              (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
+
+print("Pruning YOLO Model ...")
+yolo_model_prepare_prune = YOLO_MODEL.model
+yolo_model_after_prune = prune_model_YOLO(model=yolo_model_prepare_prune, amount=0.1)
+print("YOLO Model pruned")
+YOLO_MODEL.model = yolo_model_after_prune
+print("saving pruned YOLO model ....")
+YOLO_MODEL.save('yolo11s_trained_pruned.pt')
+print("Pruned YOLO Model saved.")
+
+print("Initilize YOLO ....")
+YOLO_MODEL_PRUNED = YOLO(model='yolo11s_trained_pruned.pt')
+YOLO_MODEL_PRUNED.cuda()
+
+
+
 
 
 #--------------------   Initial Model MPRNet --------------------------------------
@@ -77,6 +111,34 @@ MPRNet_MODEL = load_file['MPRNet']()
 MPRNet_MODEL.cuda()
 MPRNet_MODEL_WEIGHT = './model_deraining.pth'
 load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
+
+
+# print("Pruning MPRNet Model ...")
+# mprnet_model_prepare_prune = MPRNet_MODEL
+# mprnet_model_after_prune = prune_model_MPRNet(model=mprnet_model_prepare_prune, amount=0.1)
+# print("MPRNet Model pruned")
+# MPRNet_MODEL = mprnet_model_after_prune
+# print("saving pruned MPRNet model ....")
+# torch.save(obj= MPRNet_MODEL.state_dict(),f='./MPRNet_trained_pruned.pth')
+# print("Pruned MPRNet Model saved.")
+
+
+
+# print("Initilize MPRNet ....")
+# load_file = run_path(os.path.join("MPRNet.py"))
+# MPRNet_MODEL_PRUNED = load_file['MPRNet']()
+# MPRNet_MODEL_PRUNED.cuda()
+# MPRNet_MODEL_WEIGHT_PRUNED = './MPRNet_trained_pruned.pth'
+# load_checkpoint(MPRNet_MODEL_PRUNED, MPRNet_MODEL_WEIGHT_PRUNED)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -163,7 +225,7 @@ with torch.no_grad():
 
 
 #--------------------- YOLO Predict -----------------------------
-        detected_image = YOLO_MODEL(source=restored_image)
+        detected_image = YOLO_MODEL_PRUNED(source=restored_image)
         detection_results = detected_image[0].boxes
         print(f"detect image {loop_idx}")
 
