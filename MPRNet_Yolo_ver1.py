@@ -63,7 +63,11 @@ os.makedirs(result_dir, exist_ok=True)
 print("Initilize YOLO ....")
 YOLO_MODEL = YOLO(model='./yolo11s.pt', task='detect')
 YOLO_MODEL.cuda()
-labels = YOLO_MODEL.names
+LABELS = YOLO_MODEL.names
+
+
+BBOX_COLOR = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), 
+              (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
 
 
 #--------------------   Initial Model MPRNet --------------------------------------
@@ -159,6 +163,29 @@ with torch.no_grad():
 
 
 #--------------------- YOLO Predict -----------------------------
+        detected_image = YOLO_MODEL(source=restored_image)
+        detection_results = detected_image[0].boxes
+        print(f"detect image {loop_idx}")
+
+        object_count = 0
+        for i in range(len(detection_results)):
+            box_tensor = detection_results[i].xyxy.cpu()
+            xyxy = box_tensor.numpy().squeeze()
+            xmin, ymin, xmax, ymax = xyxy.astype(int)
+            classidx = int(detection_results[i].cls.item())
+            classname = LABELS[classidx]
+            conf = detection_results[i].conf.item()
+
+            if conf > 0.5:
+                color_rectangle = BBOX_COLOR[classidx % 10]
+                cv2.rectangle(restored_image, (xmin,ymin), (xmax,ymax), color=color_rectangle, thickness=2)
+                label = f'{classname} : {int(conf * 100)} %'
+                labelSize, baseline = cv2.getTextSize(text=label, fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, thickness=1)
+                label_ymin = max(ymin, labelSize[1] + 10)
+                cv2.rectangle(restored_image, pt1=(xmin, label_ymin - labelSize[1] - 10), pt2=(xmin + labelSize[0], label_ymin + baseline - 10), color=color_rectangle, thickness= cv2.FILLED)
+                cv2.putText(img=restored_image, text=label, org=(xmin, label_ymin - 7), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0,0,0), thickness=1)
+
+                object_count += 1
 
 
 
