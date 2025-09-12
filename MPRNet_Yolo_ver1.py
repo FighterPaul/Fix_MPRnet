@@ -33,10 +33,10 @@ task    = args.task
 input_dir = args.input_dir
 result_dir = args.result_dir
 
-#-------------------------------------------------------------------------------------
+#---------------------------------------- Utilis Function ---------------------------------------------
 
-def load_checkpoint(model, weights):
-    checkpoint = torch.load(weights)
+def load_checkpoint(model, weights_path):
+    checkpoint = torch.load(f= weights_path, weights_only= True)
     try:
         model.load_state_dict(checkpoint["state_dict"])
     except:
@@ -58,22 +58,44 @@ def prune_model_YOLO(model, amount=0.2):
 
 def prune_model_MPRNet(model, amount=0.2):
     for module in model.modules():
-        if isinstance(module, torch.nn.Conv2d):
+        if isinstance(module, torch.nn.Sequential):
+            print("This module is Sequential")
+            # prune.l1_unstructured(module, name='weight', amount=amount)
+            # prune.remove(module=module, name='weight')
+        elif isinstance(module, torch.nn.Linear):
+            print("This module is Linear")
             prune.l1_unstructured(module, name='weight', amount=amount)
             prune.remove(module=module, name='weight')
+        elif isinstance(module, torch.nn.Conv2d):
+            print("This module is Conv")
+            prune.l1_unstructured(module, name='weight', amount=amount)
+            prune.remove(module=module, name='weight')
+        else:
+            print("This module is something else...")
 
     return model
 
+
+
+#-------------------------- General PUBLIC VARIABLE --------------------------------------------
+
+BBOX_COLOR = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), 
+              (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
+
+
+
+#-------------------------- LOG RESULT VARIABLE -----------------------------------------------
+time_inference_MPRnet = []
+time_inference_YOLO = []
 
 
 
 #---------------------- Check system -----------------------------------------
 print(f"cuda available :: {torch.cuda.is_available()}")
 os.makedirs(result_dir, exist_ok=True)
+torch.manual_seed(42)
 
 
-BBOX_COLOR = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), 
-              (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
 
 
 
@@ -89,7 +111,7 @@ LABELS = YOLO_MODEL.names
 
 print("Pruning YOLO Model ...")
 yolo_model_prepare_prune = YOLO_MODEL.model
-yolo_model_after_prune = prune_model_YOLO(model=yolo_model_prepare_prune, amount=0.1)
+yolo_model_after_prune = prune_model_YOLO(model=yolo_model_prepare_prune, amount=0.3)
 print("YOLO Model pruned")
 YOLO_MODEL.model = yolo_model_after_prune
 print("saving pruned YOLO model ....")
@@ -110,25 +132,30 @@ load_file = run_path(os.path.join("MPRNet.py"))
 MPRNet_MODEL = load_file['MPRNet']()
 MPRNet_MODEL.cuda()
 MPRNet_MODEL_WEIGHT = './model_deraining.pth'
+
 load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
 
 
-# print("Pruning MPRNet Model ...")
-# mprnet_model_prepare_prune = MPRNet_MODEL
-# mprnet_model_after_prune = prune_model_MPRNet(model=mprnet_model_prepare_prune, amount=0.1)
-# print("MPRNet Model pruned")
-# MPRNet_MODEL = mprnet_model_after_prune
-# print("saving pruned MPRNet model ....")
-# torch.save(obj= MPRNet_MODEL.state_dict(),f='./MPRNet_trained_pruned.pth')
-# print("Pruned MPRNet Model saved.")
+print("Pruning MPRNet Model ...")
+mprnet_model_prepare_prune = MPRNet_MODEL
+mprnet_model_after_prune = prune_model_MPRNet(model=mprnet_model_prepare_prune, amount=0.3)
+print("MPRNet Model pruned")
+MPRNet_MODEL = mprnet_model_after_prune
+print("saving pruned MPRNet model ....")
+torch.save(obj= MPRNet_MODEL.state_dict(), f='./MPRNet_trained_pruned.pth')
+print("Pruned MPRNet Model saved.")
 
 
 
-# print("Initilize MPRNet ....")
-# load_file = run_path(os.path.join("MPRNet.py"))
-# MPRNet_MODEL_PRUNED = load_file['MPRNet']()
-# MPRNet_MODEL_PRUNED.cuda()
-# MPRNet_MODEL_WEIGHT_PRUNED = './MPRNet_trained_pruned.pth'
+print("Initilize MPRNet ....")
+load_file = run_path(os.path.join("MPRNet.py"))
+MPRNet_MODEL_PRUNED = load_file['MPRNet']()
+MPRNet_MODEL_PRUNED.cuda()
+
+
+MPRNet_MODEL_WEIGHT_PRUNED = './MPRNet_trained_pruned.pth'
+
+MPRNet_MODEL_PRUNED.load_state_dict(torch.load(f=MPRNet_MODEL_WEIGHT_PRUNED, weights_only=True))
 # load_checkpoint(MPRNet_MODEL_PRUNED, MPRNet_MODEL_WEIGHT_PRUNED)
 
 
@@ -209,10 +236,21 @@ with torch.no_grad():
 
 
 #---------------------  Restoration -----------------------------
+
+
+        time_start_retoration = time.perf_counter()     # start time stamp
+        
         img = PIL.Image.open(each_image).convert('RGB')
         input_ = TF.to_tensor(img).unsqueeze(0).cuda()
 
-        restored_image = MPRNet_MODEL(input_)
+
+
+        restored_image = MPRNet_MODEL_PRUNED(input_)       # inference
+
+
+
+
+        #----------------   edit image ---------------------------------
         restored_image = restored_image[0]
         restored_image = torch.clamp(restored_image, 0, 1)
 
@@ -222,9 +260,20 @@ with torch.no_grad():
         restored_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR)
 
 
+        time_finish_retoration = time.perf_counter()        # finish time stamp
 
 
-#--------------------- YOLO Predict -----------------------------
+        time_inference_elapse = time_finish_retoration - time_start_retoration
+        print(f"Time Restoration :: {time_inference_elapse} seconds.")
+        time_inference_MPRnet.append(time_inference_elapse)
+
+
+
+
+#--------------------- YOLO Detect -----------------------------
+        time_start_detect = time.perf_counter()        # start time stamp
+
+
         detected_image = YOLO_MODEL_PRUNED(source=restored_image)
         detection_results = detected_image[0].boxes
         print(f"detect image {loop_idx}")
@@ -249,8 +298,30 @@ with torch.no_grad():
 
                 object_count += 1
 
+        time_finish_detect = time.perf_counter()       # finish time stamp
+        time_inference_elapse = time_finish_detect - time_start_detect
+        print(f"Time Detection :: {time_inference_elapse} seconds.", end='\n\n')
+        time_inference_YOLO.append(time_inference_elapse)
 
 
 #-------------------- save image ----------------------
         path_to_save = os.path.join(result_dir, os.path.basename(each_image))
         cv2.imwrite(filename=path_to_save, img=restored_image)
+
+
+
+
+
+
+#------------------------------  print log result   ---------------------------------
+
+print("\n\nLog Result ...", end='\n\n')
+time_inference_MPRNet_avg = sum(time_inference_MPRnet) / len(time_inference_MPRnet)
+time_inference_YOLO_avg = sum(time_inference_YOLO) / len(time_inference_YOLO)
+
+
+print(f"Time Inference MPRNet {time_inference_MPRnet}")
+print(f"AVG :: {time_inference_MPRNet_avg} seconds.")
+print("\n\n\n")
+print(f"Time Inference MPRNet {time_inference_YOLO}")
+print(f"AVG :: {time_inference_YOLO_avg} seconds.")
