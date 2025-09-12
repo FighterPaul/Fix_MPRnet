@@ -15,6 +15,8 @@ from glob import glob
 import cv2
 import argparse
 import time
+from torchinfo import summary
+# from torchsummary import summary
 
 
 
@@ -59,9 +61,18 @@ def prune_model_YOLO(model, amount=0.2):
 def prune_model_MPRNet(model, amount=0.2):
     for module in model.modules():
         if isinstance(module, torch.nn.Sequential):
-            print("This module is Sequential")
-            # prune.l1_unstructured(module, name='weight', amount=amount)
-            # prune.remove(module=module, name='weight')
+            print("This module is Sequential", end='  ')
+            for sub_module in module:
+                if isinstance(sub_module, torch.nn.Linear):
+                    print(" sub module is Linear ")
+                    prune.l1_unstructured(sub_module, name='weight', amount=amount)
+                    prune.remove(module=sub_module, name='weight')
+                elif isinstance(sub_module, torch.nn.Conv2d):
+                    print(" sub module is Conv ")
+                    prune.l1_unstructured(sub_module, name='weight', amount=amount)
+                    prune.remove(module=sub_module, name='weight')
+
+
         elif isinstance(module, torch.nn.Linear):
             print("This module is Linear")
             prune.l1_unstructured(module, name='weight', amount=amount)
@@ -138,7 +149,7 @@ load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
 
 print("Pruning MPRNet Model ...")
 mprnet_model_prepare_prune = MPRNet_MODEL
-mprnet_model_after_prune = prune_model_MPRNet(model=mprnet_model_prepare_prune, amount=0.3)
+mprnet_model_after_prune = prune_model_MPRNet(model=mprnet_model_prepare_prune, amount=0.1)
 print("MPRNet Model pruned")
 MPRNet_MODEL = mprnet_model_after_prune
 print("saving pruned MPRNet model ....")
@@ -245,6 +256,7 @@ with torch.no_grad():
 
 
 
+
         restored_image = MPRNet_MODEL_PRUNED(input_)       # inference
 
 
@@ -258,6 +270,7 @@ with torch.no_grad():
         restored_image = img_as_ubyte(restored_image[0])
 
         restored_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR)
+
 
 
         time_finish_retoration = time.perf_counter()        # finish time stamp
@@ -319,9 +332,13 @@ print("\n\nLog Result ...", end='\n\n')
 time_inference_MPRNet_avg = sum(time_inference_MPRnet) / len(time_inference_MPRnet)
 time_inference_YOLO_avg = sum(time_inference_YOLO) / len(time_inference_YOLO)
 
+print(summary(MPRNet_MODEL_PRUNED, input_size=(1, 3, 480, 320)))
+YOLO_MODEL_PRUNED.info()
 
 print(f"Time Inference MPRNet {time_inference_MPRnet}")
 print(f"AVG :: {time_inference_MPRNet_avg} seconds.")
 print("\n\n\n")
 print(f"Time Inference MPRNet {time_inference_YOLO}")
 print(f"AVG :: {time_inference_YOLO_avg} seconds.")
+
+
