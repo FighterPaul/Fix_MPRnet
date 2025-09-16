@@ -346,16 +346,16 @@ print(f"model file size {getfilesizeMB(path=MPRNet_MODEL_WEIGHT_PRUNED_QUANTED)}
 
 
 #-----------------------   Initial USB Camera ------------------------------
-# SOURCE_TYPE = 'usb'
-# USB_IDX = 0
-# RES_W, RES_H = 480, 320
+SOURCE_TYPE = 'usb'
+USB_IDX = 0
+RES_W, RES_H = 480, 320
 
 
-# cap_arg = USB_IDX
-# cap = cv2.VideoCapture(cap_arg)
+cap_arg = USB_IDX
+cap = cv2.VideoCapture(cap_arg)
 # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-# cap.set(3, RES_W)
-# cap.set(4, RES_H)
+cap.set(3, RES_W)
+cap.set(4, RES_H)
 
 
 #----------------------  edit dimension of image -----------------------
@@ -395,18 +395,18 @@ with torch.no_grad():
 
         print(f"Loop {loop_idx}")
     
-        # ret, frame = cap.read()
-        # if (frame is None) or (not ret):
-        #     print('Unable to read frames from the camera. This indicates the camera is disconnected or not working. Exiting program.')
-        #     break
+        ret, frame = cap.read()
+        if (frame is None) or (not ret):
+            print('Unable to read frames from the camera. This indicates the camera is disconnected or not working. Exiting program.')
+            break
 
-        # frame = cv2.resize(frame, (RES_W, RES_H))
+        frame = cv2.resize(frame, (RES_W, RES_H))
         
-        # cv2.imshow(winname= 'USB Camera 00', mat=frame)
-        # key = cv2.waitKey(5)
+        cv2.imshow(winname= 'USB Camera 00', mat=frame)
+        key = cv2.waitKey(5)
 
-        # if key ==('q') or key == ord('Q'):
-        #     break
+        if key ==('q') or key == ord('Q'):
+            break
 
 
 #---------------------  Restoration -----------------------------
