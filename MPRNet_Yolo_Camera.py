@@ -1,11 +1,11 @@
-import PIL.Image
+# import PIL.Image
 import torch.nn.utils.prune as prune
 from ultralytics import YOLO
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
-import PIL
+# import PIL
 import os
 from runpy import run_path
 from skimage import img_as_ubyte
@@ -27,10 +27,20 @@ print(f"{'*'*10}  Start {__file__}")
 #------------------------------------ Parser ------------------------------------
 
 parser = argparse.ArgumentParser(description='Demo MPRNet')
-parser.add_argument('--task', required=False, default='Deraining', type=str, help='Task to run', choices=['Deblurring', 'Denoising', 'Deraining'])
+parser.add_argument('--task', required=False, default='deraining', type=str, help='Task to run', choices=['deblurring', 'denoising', 'deraining'])
+parser.add_argument('--usb_cam_idx', required=False, default=0, type=int, help='USB Camera Index', choices=[0, 1, 2, 3, 4])
+parser.add_argument('--img_res', required=False, default='480x320', type=str, help='camera image resolution WxH')
+
+
 args = parser.parse_args()
 
-task    = args.task
+user_task    = args.task
+user_usb_cam_idx = args.usb_cam_idx
+user_img_res = args.img_res
+
+
+
+
 
 #---------------------------------------- Utilis Function ---------------------------------------------
 
@@ -268,7 +278,7 @@ print("Initilize MPRNet ....")
 load_file = run_path(os.path.join("MPRNet.py"))
 MPRNet_MODEL = load_file['MPRNet']()
 MPRNet_MODEL.cuda()
-MPRNet_MODEL_WEIGHT = './model_deraining.pth'
+MPRNet_MODEL_WEIGHT = f'./model_{user_task}.pth'
 
 load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
 
@@ -332,22 +342,12 @@ print(f"model file size {getfilesizeMB(path=MPRNet_MODEL_WEIGHT_PRUNED_QUANTED)}
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 #-----------------------   Initial USB Camera ------------------------------
 SOURCE_TYPE = 'usb'
-USB_IDX = 2
-RES_W, RES_H = 480, 320
+USB_IDX = user_usb_cam_idx
+RES_W = int(user_img_res.split('x')[0])
+RES_H = int(user_img_res.split('x')[1])
+
 
 
 cap_arg = USB_IDX
@@ -364,18 +364,13 @@ with torch.no_grad():
 
         print(f"Loop # {mainloop_idx}")
     
-        ret, frame = cap.read()
+        ret, frame = cap.read()             # grap a frame(image) from camera
         if (frame is None) or (not ret):
             print('Unable to read frames from the camera. This indicates the camera is disconnected or not working. Exiting program.')
             break
 
-        frame = cv2.resize(frame, (RES_W, RES_H))
+        frame = cv2.resize(frame, (RES_W, RES_H))   # resize frame to resolution which user want 
         
-        # cv2.imshow(winname= f'{SOURCE_TYPE} {USB_IDX}', mat=frame)
-        # key = cv2.waitKey(1)
-
-        # if key ==('q') or key == ord('Q'):
-        #     break
 
 
 #---------------------  Restoration -----------------------------
@@ -455,7 +450,7 @@ with torch.no_grad():
         cv2.imshow(winname= f'{SOURCE_TYPE} {USB_IDX}', mat=restored_image_cvtcolor)
         key = cv2.waitKey(5)
 
-        if key == ord('q') or key == ord('Q'):
+        if key == ord('q') or key == ord('Q'):          # if user press 'q' or 'Q'  program will exit
             break
 
 
