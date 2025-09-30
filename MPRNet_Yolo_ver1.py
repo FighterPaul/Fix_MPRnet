@@ -235,6 +235,7 @@ time_inference_YOLO = []
 print(f"cuda available :: {torch.cuda.is_available()}")
 os.makedirs(result_dir, exist_ok=True)
 torch.manual_seed(42)
+torch.cuda.empty_cache()
 
 
 
@@ -277,7 +278,8 @@ MPRNet_MODEL_WEIGHT = './model_deraining.pth'
 load_checkpoint(MPRNet_MODEL, MPRNet_MODEL_WEIGHT)
 
 # print(summary(MPRNet_MODEL, input_size=(1, 3, 480, 320)))
-count_model_param_flops(model=MPRNet_MODEL.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
+with torch.no_grad():
+    count_model_param_flops(model=MPRNet_MODEL.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
 print(f"model file size {getfilesizeMB(path=MPRNet_MODEL_WEIGHT)} MB.")
 
 
@@ -290,7 +292,8 @@ print("saving pruned MPRNet model ....")
 torch.save(obj= MPRNet_MODEL.state_dict(), f='./MPRNet_trained_pruned.pth')
 print("Pruned MPRNet Model saved.")
 
-count_model_param_flops(model=MPRNet_MODEL.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
+with torch.no_grad():
+    count_model_param_flops(model=MPRNet_MODEL.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
 print(f"model file size {getfilesizeMB(path='./MPRNet_trained_pruned.pth')} MB.")
 
 
@@ -326,7 +329,8 @@ MPRNet_MODEL_PRUNED_QUANTED.load_state_dict(torch.load(f=MPRNet_MODEL_WEIGHT_PRU
 # load_checkpoint(MPRNet_MODEL_PRUNED_QUANTED, MPRNet_MODEL_WEIGHT_PRUNED)
 
 # print(summary(MPRNet_MODEL_PRUNED_QUANTED, input_size=(1, 3, 480, 320)))
-count_model_param_flops(model=MPRNet_MODEL_PRUNED_QUANTED.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
+with torch.no_grad():
+    count_model_param_flops(model=MPRNet_MODEL_PRUNED_QUANTED.eval(), input_res_width=480, input_res_height=320, multiply_adds=True)
 print(f"model file size {getfilesizeMB(path=MPRNet_MODEL_WEIGHT_PRUNED_QUANTED)} MB.")
 
 
