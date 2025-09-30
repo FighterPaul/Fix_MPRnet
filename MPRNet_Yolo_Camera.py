@@ -275,7 +275,7 @@ YOLO_MODEL_PRUNED.cuda()
 
 #--------------------   Initial Model MPRNet --------------------------------------
 print("Initilize MPRNet ....")
-load_file = run_path(os.path.join("MPRNet.py"))
+load_file = run_path(os.path.join(f"MPRNet_{user_task}.py"))
 MPRNet_MODEL = load_file['MPRNet']()
 MPRNet_MODEL.cuda()
 MPRNet_MODEL_WEIGHT = f'./model_{user_task}.pth'
@@ -303,7 +303,7 @@ print(f"model file size {getfilesizeMB(path='./MPRNet_trained_pruned.pth')} MB."
 
 
 print("Quantizing MPRNet")
-load_file = run_path(os.path.join("MPRNet.py"))
+load_file = run_path(os.path.join(f"MPRNet_{user_task}.py"))
 MPRNet_MODEL_PRUNED = load_file['MPRNet']()
 MPRNet_MODEL_PRUNED.cuda()
 MPRNet_MODEL_WEIGHT_PRUNED = './MPRNet_trained_pruned.pth'
@@ -323,7 +323,7 @@ print("Quantized MPRNet Model saved.")
 
 
 print("Initilize MPRNet ....")
-load_file = run_path(os.path.join("MPRNet.py"))
+load_file = run_path(os.path.join(f"MPRNet_{user_task}.py"))
 MPRNet_MODEL_PRUNED_QUANTED = load_file['MPRNet']()
 MPRNet_MODEL_PRUNED_QUANTED.cuda()
 
