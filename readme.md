@@ -4,7 +4,7 @@ Not dont yet, can only Derain
 still working on connect with USB camera
 
 ## Installation
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install dependecies.
 
 ```bash
 conda create --name venv_mprnet python=3.8
@@ -25,6 +25,19 @@ For now, can ONLY Derain, read image from folder, YOLO can drawing the rectangle
 python MPRNet_Yolo_ver1.py --input_dir ./Images/Raw_images --result_dir ./Images/Result_images/ --task Deraining
 ```
 Pruning MPRNet, connecting with USB Camera is underdevelopment . . .
+
+## Example code for run MPRNet_Yolo_Camera.py
+**Pipeline : USB Camera => MPRNet(pruned+quantized) + YOLO(pruned) => show detect image via opencv (not save to folder)**
+
+can choose a task 'deblurring', 'denoising', 'deraining'
+
+can choose USB Camera Index e.g. 0, 1, 2
+
+can choose image resolution e.g. 720x480, 480x320
+```bash
+python MPRNet_Yolo_Camera.py --task deblurring --usb_cam_idx 2 --img_res 720x480
+```
+
 
 
 ## reference
