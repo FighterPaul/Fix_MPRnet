@@ -240,7 +240,7 @@ torch.cuda.empty_cache()
 
 #----------------------  Initial Model YOLO -------------------------------------
 print("Initilize YOLO ....")
-YOLO_MODEL = YOLO(model='./yolo11s.pt', task='detect')
+YOLO_MODEL = YOLO(model='./yolov11s_50epoch_weapon.pt', task='detect')
 YOLO_MODEL.cuda()
 LABELS = YOLO_MODEL.names
 
@@ -346,7 +346,7 @@ print(f"model file size {getfilesizeMB(path=MPRNet_MODEL_WEIGHT_PRUNED_QUANTED)}
 
 #-----------------------   Initial USB Camera ------------------------------
 SOURCE_TYPE = 'usb'
-USB_IDX = 0
+USB_IDX = 2
 RES_W, RES_H = 480, 320
 
 
@@ -450,7 +450,9 @@ with torch.no_grad():
 
 #-------------------- show image ----------------------
 
-        cv2.imshow(winname= f'{SOURCE_TYPE} {USB_IDX}', mat=restored_image)
+        restored_image_cvtcolor = cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR)
+
+        cv2.imshow(winname= f'{SOURCE_TYPE} {USB_IDX}', mat=restored_image_cvtcolor)
         key = cv2.waitKey(5)
 
         if key == ord('q') or key == ord('Q'):
