@@ -35,7 +35,7 @@ can choose USB Camera Index e.g. 0, 1, 2
 
 can choose image resolution e.g. 720x480, 480x320
 ```bash
-python MPRNet_Yolo_Camera.py --task deblurring --usb_cam_idx 2 --img_res 720x480
+python MPRNet_Yolo_Camera.py --task deraining --usb_cam_idx 0 --img_res 480x320
 ```
 
 
